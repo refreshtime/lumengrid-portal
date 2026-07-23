@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>Lumen Grid — Financeiro</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --accent:#E8641A;--accent-d:rgba(232,100,26,.1);--accent-h:#F07328;
+  --bg:#0A0A0C;--s1:#111115;--s2:#18181D;--s3:#222228;
+  --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.04);
+  --t1:#F4F4F5;--t2:#A1A1AA;--t3:#52525B;
+  --green:#22C55E;--green-d:rgba(34,197,94,.1);
+  --red:#F87171;--red-d:rgba(248,113,113,.09);
+  --blue:#60A5FA;--blue-d:rgba(96,165,250,.1);
+  --yellow:#FBBF24;--yellow-d:rgba(251,191,36,.1);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:80px}
+
+/* HEADER */
+.hdr{background:var(--s1);border-bottom:1px solid var(--b1);padding:0 20px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.hdr-brand{font-family:'Montserrat',sans-serif;font-size:13px;font-weight:900;letter-spacing:3px;color:var(--accent)}
+.hdr-brand span{color:var(--t1)}
+.hdr-label{font-size:8px;letter-spacing:2px;color:var(--t3);margin-top:1px;font-weight:500;text-transform:uppercase}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--t3)}
+.sync-dot.ok{background:var(--green)}.sync-dot.err{background:var(--red)}.sync-dot.loading{background:var(--yellow);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* TABS */
+.tabs{background:var(--s1);border-bottom:1px solid var(--b1);padding:0 20px;display:flex;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:6px;padding:0 16px;height:44px;font-size:11px;font-weight:600;letter-spacing:.3px;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;user-select:none;white-space:nowrap;flex-shrink:0}
+.tab.active{color:var(--t1);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--t2)}
+
+/* CONTENT */
+.content{padding:16px 16px 0;max-width:600px;margin:0 auto}
+.tab-pane{display:none}.tab-pane.active{display:block}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+@media(min-width:480px){.kpi-row{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent)}
+.kpi.g::before{background:var(--green)}.kpi.r::before{background:var(--red)}.kpi.b::before{background:var(--blue)}.kpi.y::before{background:var(--yellow)}
+.kpi-lbl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--t3);margin-bottom:8px}
+.kpi-val{font-size:18px;font-weight:700;color:var(--t1);letter-spacing:-.4px;line-height:1}
+.kpi.accent .kpi-val{color:var(--accent)}.kpi.g .kpi-val{color:var(--green)}.kpi.r .kpi-val{color:var(--red)}.kpi.b .kpi-val{color:var(--blue)}.kpi.y .kpi-val{color:var(--yellow)}
+.kpi-sub{font-size:9px;color:var(--t3);margin-top:5px}
+
+/* CARD */
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:10px;margin-bottom:14px;overflow:hidden}
+.card-hdr{padding:12px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--t2)}
+.card-body{padding:16px}
+
+/* FORM */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.fg label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)}
+.fi,.fsel,.fta{width:100%;padding:10px 13px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;font-size:14px;color:var(--t1);font-family:'Inter',sans-serif;transition:border-color .15s;-webkit-appearance:none}
+.fi:focus,.fsel:focus,.fta:focus{outline:none;border-color:rgba(232,100,26,.5)}
+.fi::placeholder{color:var(--t3)}
+.fsel option{background:var(--s2)}
+.fta{resize:vertical;min-height:60px;font-size:13px}
+.fi-val{font-size:26px;font-weight:700;letter-spacing:-.5px;text-align:center;padding:14px;color:var(--t1)}
+
+/* CATEGORY CHIPS */
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.chip{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;background:var(--s2);border:1.5px solid var(--b1);border-radius:10px;cursor:pointer;transition:all .15s;font-size:10px;font-weight:600;color:var(--t2);text-align:center;-webkit-tap-highlight-color:transparent;user-select:none}
+.chip .ico{font-size:20px;line-height:1}
+.chip:active{transform:scale(.96)}
+.chip.sel{border-color:var(--accent);background:var(--accent-d);color:var(--accent)}
+.chip.sel .ico{filter:none}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.btn-a{background:var(--accent);color:#fff}.btn-a:hover{background:var(--accent-h)}
+.btn-g{background:transparent;border:1px solid var(--b1);color:var(--t2)}.btn-g:hover{color:var(--t1)}
+.btn-gr{background:transparent;border:1px solid rgba(34,197,94,.25);color:var(--green)}
+.btn-r{background:transparent;border:1px solid rgba(248,113,113,.25);color:var(--red)}
+.btn-sm{height:30px;padding:4px 12px;font-size:10px}
+.btn-full{width:100%;height:52px;font-size:15px;font-weight:700;border-radius:10px;margin-top:4px}
+
+/* FIXED BOTTOM BTN */
+.fab{position:fixed;bottom:0;left:0;right:0;padding:12px 16px 20px;background:linear-gradient(to top,var(--bg) 60%,transparent);z-index:50;display:none}
+.fab.show{display:block}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;min-width:400px}
+.tbl th{padding:8px 12px;text-align:left;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);border-bottom:1px solid var(--b1);white-space:nowrap}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--b2);color:var(--t1);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+.tbl td.mu{color:var(--t2);font-size:11px}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+.badge-a{background:var(--accent-d);color:var(--accent)}
+.badge-g{background:var(--green-d);color:var(--green)}
+.badge-r{background:var(--red-d);color:var(--red)}
+.badge-y{background:var(--yellow-d);color:var(--yellow)}
+.badge-b{background:var(--blue-d);color:var(--blue)}
+
+/* DIVIDER */
+.div{height:1px;background:var(--b1);margin:14px 0}
+
+/* SEARCH */
+.search-bar{display:flex;gap:8px;margin-bottom:14px}
+.search-bar .fi{font-size:13px;flex:1}
+
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;color:var(--t3)}
+.empty-ico{font-size:36px;margin-bottom:10px}
+.empty-txt{font-size:12px}
+
+/* VINCULAR MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:flex-end;padding:0}
+.ov.open{display:flex}
+.ov-box{background:var(--s1);border-radius:16px 16px 0 0;padding:20px 16px 32px;width:100%;max-height:90vh;overflow-y:auto}
+.ov-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t2);margin-bottom:16px}
+
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--s3);border:1px solid var(--b1);border-radius:8px;padding:10px 18px;font-size:12px;font-weight:600;z-index:300;opacity:0;transition:opacity .2s;white-space:nowrap}
+.toast.ok{border-color:rgba(34,197,94,.3);color:var(--green)}
+.toast.err{border-color:rgba(248,113,113,.3);color:var(--red)}
+.toast.show{opacity:1}
+
+/* CONFIG */
+.cfg-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:10px}
+.cfg-row .fi{flex:1;font-size:12px}
+
+@media(min-width:600px){
+  .content{padding:20px 24px 0}
+  .chips{grid-template-columns:repeat(6,1fr)}
+  .card-body{padding:20px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div>
+    <div class="hdr-brand">LUMEN<span>GRID</span></div>
+    <div class="hdr-label">Financeiro</div>
+  </div>
+  <div class="hdr-right">
+    <div class="sync-dot" id="syncDot" title="Status da conexão"></div>
+    <button class="btn btn-g btn-sm" onclick="openTab('config')" style="font-size:10px">⚙</button>
+  </div>
+</header>
+
+<!-- TABS -->
+<nav class="tabs">
+  <div class="tab active" onclick="openTab('lancar')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+    Lançar
+  </div>
+  <div class="tab" onclick="openTab('projetos')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+    Projetos
+  </div>
+  <div class="tab" onclick="openTab('despesas')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    Despesas
+  </div>
+  <div class="tab" onclick="openTab('resumo')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-4"/></svg>
+    Resumo
+  </div>
+  <div class="tab" onclick="openTab('config')" id="tabConfig" style="display:none">
+    ⚙ Config
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════ LANÇAR ═══ -->
+<div class="content">
+<div class="tab-pane active" id="pane-lancar">
+
+  <div class="card" style="margin-top:14px">
+    <div class="card-hdr">
+      <span class="card-title">Nova Despesa / Receita</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" id="btnTipoDespesa" onclick="setTipo('despesa')" style="background:var(--red-d);color:var(--red);border:1px solid rgba(248,113,113,.3)">Despesa</button>
+        <button class="btn btn-sm btn-g" id="btnTipoReceita" onclick="setTipo('receita')">Receita</button>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <!-- Valor -->
+      <div class="fg">
+        <label>Valor (R$)</label>
+        <input class="fi fi-val" id="fValor" type="number" inputmode="decimal" placeholder="0,00" step="0.01" min="0">
+      </div>
+
+      <!-- Categoria chips (só despesa) -->
+      <div id="chipWrap">
+        <div class="fg" style="margin-bottom:8px"><label>Categoria</label></div>
+        <div class="chips" id="chips">
+          <div class="chip" onclick="selChip(this,'Gasolina')"><span class="ico">⛽</span>Gasolina</div>
+          <div class="chip" onclick="selChip(this,'Deslocamento')"><span class="ico">🚗</span>Desloc.</div>
+          <div class="chip" onclick="selChip(this,'Material')"><span class="ico">🔧</span>Material</div>
+          <div class="chip" onclick="selChip(this,'Comissão')"><span class="ico">🤝</span>Comissão</div>
+          <div class="chip" onclick="selChip(this,'Equipamento')"><span class="ico">📦</span>Equipam.</div>
+          <div class="chip" onclick="selChip(this,'Outros')"><span class="ico">📋</span>Outros</div>
+        </div>
+        <input class="fi" id="fCategoria" type="text" placeholder="Categoria selecionada acima" style="margin-bottom:12px;font-size:12px;display:none">
+      </div>
+
+      <!-- Receita: tipo de receita -->
+      <div id="receitaWrap" style="display:none">
+        <div class="fg">
+          <label>Tipo de Receita</label>
+          <select class="fsel" id="fTipoReceita">
+            <option value="Venda Projeto">Venda de Projeto</option>
+            <option value="Entrada">Entrada / Sinal</option>
+            <option value="Parcela">Parcela</option>
+            <option value="Financiamento">Liberação Financiamento</option>
+            <option value="Outros">Outros</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Descrição -->
+      <div class="fg">
+        <label>Descrição</label>
+        <textarea class="fta" id="fDesc" placeholder="Ex: Combustível visita técnica cliente João..."></textarea>
+      </div>
+
+      <!-- Contrato (opcional) -->
+      <div class="fg">
+        <label>Nº Contrato <span style="color:var(--t3);font-weight:400;text-transform:none;letter-spacing:0;font-size:9px">— opcional, vincule depois se não tiver</span></label>
+        <div style="display:flex;gap:8px">
+          <input class="fi" id="fContrato" type="text" placeholder="LG-2026-XXXX" style="flex:1;font-size:13px" oninput="this.value=this.value.toUpperCase()" list="listaContratos">
+          <datalist id="listaContratos"></datalist>
+          <button class="btn btn-g btn-sm" onclick="fContrato.value=''" title="Limpar">✕</button>
+        </div>
+      </div>
+
+      <!-- Data + Lançado por -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg">
+          <label>Data</label>
+          <input class="fi" id="fData" type="date" style="font-size:13px">
+        </div>
+        <div class="fg">
+          <label>Lançado por</label>
+          <select class="fsel" id="fUser" style="font-size:13px">
+            <option>Lucas</option>
+            <option>Hingrid</option>
+            <option>Giovani</option>
+            <option>Outro</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn btn-a btn-full" onclick="lancar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:16px;height:16px;stroke-width:2.5"><path d="M12 5v14M5 12h14"/></svg>
+        Lançar
+      </button>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════ PROJETOS ═══ -->
+<div class="tab-pane" id="pane-projetos">
+  <div style="margin-top:14px">
+    <div class="kpi-row" id="kpiProjetos">
+      <div class="kpi b"><div class="kpi-lbl">Projetos</div><div class="kpi-val" id="kTotalProj">—</div><div class="kpi-sub">cadastrados</div></div>
+      <div class="kpi accent"><div class="kpi-lbl">Receita Total</div><div class="kpi-val" id="kReceita">—</div><div class="kpi-sub">valor vendido</div></div>
+      <div class="kpi r"><div class="kpi-lbl">Despesas</div><div class="kpi-val" id="kDespesas">—</div><div class="kpi-sub">em projetos</div></div>
+      <div class="kpi g"><div class="kpi-lbl">Margem Real</div><div class="kpi-val" id="kMargem">—</div><div class="kpi-sub">receita − despesas</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title">Projetos / Contratos</span>
+      <button class="btn btn-a btn-sm" onclick="openAddProjeto()">+ Projeto</button>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th>Contrato</th><th>Cliente</th><th>Receita</th><th>Despesas</th><th>Margem</th><th></th>
+        </tr></thead>
+        <tbody id="tbodyProjetos"><tr><td colspan="6" class="empty"><div class="empty-ico">📂</div><div class="empty-txt">Carregando...</div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ DESPESAS ═══ -->
+<div class="tab-pane" id="pane-despesas">
+  <div style="margin-top:14px">
+    <div class="search-bar">
+      <input class="fi" id="searchDesp" placeholder="Buscar contrato, descrição..." oninput="renderDespesas()" style="font-size:13px">
+      <select class="fsel" id="filterCat" onchange="renderDespesas()" style="width:auto;min-width:120px;font-size:12px">
+        <option value="">Tudo</option>
+        <option>Gasolina</option>
+        <option>Deslocamento</option>
+        <option>Material</option>
+        <option>Comissão</option>
+        <option>Equipamento</option>
+        <option>Outros</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Despesas lançadas</span>
+        <span id="despCount" style="font-size:10px;color:var(--t3)">—</span>
+      </div>
+      <div id="listaDespesas">
+        <div class="empty" style="padding:30px"><div class="empty-ico">⏳</div><div class="empty-txt">Carregando...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ RESUMO ═══ -->
+<div class="tab-pane" id="pane-resumo">
+  <div style="margin-top:14px">
+    <div class="kpi-row">
+      <div class="kpi accent"><div class="kpi-lbl">Total Receitas</div><div class="kpi-val" id="rReceita">—</div></div>
+      <div class="kpi r"><div class="kpi-lbl">Total Despesas</div><div class="kpi-val" id="rDespesas">—</div></div>
+      <div class="kpi g"><div class="kpi-lbl">Saldo Líquido</div><div class="kpi-val" id="rSaldo">—</div></div>
+      <div class="kpi y"><div class="kpi-lbl">Sem Contrato</div><div class="kpi-val" id="rSemContrato">—</div><div class="kpi-sub">despesas a vincular</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Despesas sem contrato</span><span style="font-size:9px;color:var(--t3)">vincule ao contrato quando fechar</span></div>
+      <div id="listaSemContrato">
+        <div class="empty" style="padding:24px"><div class="empty-txt">Nenhuma despesa sem contrato</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Por categoria</span></div>
+      <div id="porCategoria" class="card-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ CONFIG ═══ -->
+<div class="tab-pane" id="pane-config">
+  <div style="margin-top:14px">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Configuração</span></div>
+      <div class="card-body">
+        <div class="fg">
+          <label>URL do Apps Script (Financeiro)</label>
+          <div class="cfg-row">
+            <input class="fi" id="cfgUrl" type="url" placeholder="https://script.google.com/macros/s/...">
+            <button class="btn btn-a btn-sm" onclick="salvarConfig()">Salvar</button>
+          </div>
+          <span style="font-size:10px;color:var(--t3)">Cole a URL após implantar FINANCEIRO_Codigo.gs como Web App</span>
+        </div>
+        <div class="div"></div>
+        <button class="btn btn-g btn-sm" onclick="sincronizar()" style="margin-right:8px">↻ Sincronizar dados</button>
+        <button class="btn btn-r btn-sm" onclick="if(confirm('Apagar dados locais?'))limparLocal()">Limpar cache local</button>
+        <div style="margin-top:12px;font-size:10px;color:var(--t3)" id="cfgStatus"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<!-- VINCULAR MODAL -->
+<div class="ov" id="ovVincular">
+  <div class="ov-box">
+    <div class="ov-title">Vincular ao Contrato</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px" id="vincDesc"></div>
+    <div class="fg">
+      <label>Nº do Contrato</label>
+      <input class="fi" id="vincContrato" type="text" placeholder="LG-2026-XXXX" oninput="this.value=this.value.toUpperCase()" list="listaContratos">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-a" style="flex:1" onclick="confirmarVinculo()">Vincular</button>
+      <button class="btn btn-g" onclick="closeOv('ovVincular')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PROJETO MODAL -->
+<div class="ov" id="ovProjeto">
+  <div class="ov-box">
+    <div class="ov-title">Registrar Projeto / Receita</div>
+    <div class="fg">
+      <label>Nº Contrato</label>
+      <input class="fi" id="pjContrato" type="text" placeholder="LG-2026-XXXX" oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <div class="fg">
+      <label>Nome do Cliente</label>
+      <input class="fi" id="pjCliente" type="text" placeholder="Ex: João Silva">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="fg">
+        <label>Valor da Venda (R$)</label>
+        <input class="fi" id="pjValor" type="number" inputmode="decimal" placeholder="45000">
+      </div>
+      <div class="fg">
+        <label>Data</label>
+        <input class="fi" id="pjData" type="date">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="fg">
+        <label>Vendedor</label>
+        <select class="fsel" id="pjVendedor">
+          <option>Lucas</option><option>Hingrid</option><option>Giovani</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Parceiro</label>
+        <input class="fi" id="pjParceiro" type="text" placeholder="Opcional">
+      </div>
+    </div>
+    <div class="fg">
+      <label>Observação</label>
+      <input class="fi" id="pjObs" type="text" placeholder="Opcional">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-a" style="flex:1" onclick="salvarProjeto()">Salvar Projeto</button>
+      <button class="btn btn-g" onclick="closeOv('ovProjeto')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── ESTADO ──────────────────────────────────────────────
+let DESPESAS  = [];
+let PROJETOS  = [];
+let TIPO      = 'despesa';
+let CAT_SEL   = '';
+let VINC_ID   = null;
+
+// ── CONFIG ──────────────────────────────────────────────
+const CFG_KEY = 'lg_fin_config';
+function getUrl(){ return (JSON.parse(localStorage.getItem(CFG_KEY)||'{}').url)||''; }
+function salvarConfig(){
+  const url=document.getElementById('cfgUrl').value.trim();
+  localStorage.setItem(CFG_KEY,JSON.stringify({url}));
+  toast('URL salva!','ok');
+  setSyncDot('ok');
+  sincronizar();
+}
+function limparLocal(){
+  localStorage.removeItem('lg_fin_despesas');
+  localStorage.removeItem('lg_fin_projetos');
+  DESPESAS=[];PROJETOS=[];
+  renderAll();
+  toast('Cache limpo','ok');
+}
+
+// ── TABS ────────────────────────────────────────────────
+function openTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  const pane=document.getElementById('pane-'+id);
+  if(pane)pane.classList.add('active');
+  const tabs=document.querySelectorAll('.tab');
+  const map={lancar:0,projetos:1,despesas:2,resumo:3};
+  if(map[id]!==undefined)tabs[map[id]].classList.add('active');
+  if(id==='projetos')renderProjetos();
+  if(id==='despesas')renderDespesas();
+  if(id==='resumo')renderResumo();
+  if(id==='config'){
+    document.getElementById('cfgUrl').value=getUrl();
+    document.getElementById('tabConfig').style.display='flex';
+    document.getElementById('tabConfig').classList.add('active');
+  }
+}
+
+// ── TIPO DESPESA / RECEITA ───────────────────────────────
+function setTipo(t){
+  TIPO=t;
+  const bd=document.getElementById('btnTipoDespesa');
+  const br=document.getElementById('btnTipoReceita');
+  const cw=document.getElementById('chipWrap');
+  const rw=document.getElementById('receitaWrap');
+  if(t==='despesa'){
+    bd.style.background='var(--red-d)';bd.style.color='var(--red)';bd.style.borderColor='rgba(248,113,113,.3)';
+    br.style.background='';br.style.color='';br.className='btn btn-sm btn-g';
+    cw.style.display='';rw.style.display='none';
+  }else{
+    br.style.background='var(--green-d)';br.style.color='var(--green)';br.style.borderColor='rgba(34,197,94,.3)';
+    bd.style.background='';bd.style.color='';bd.className='btn btn-sm btn-g';
+    cw.style.display='none';rw.style.display='';
+  }
+}
+
+// ── CHIPS ────────────────────────────────────────────────
+function selChip(el,cat){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  CAT_SEL=cat;
+}
+
+// ── LANÇAR ───────────────────────────────────────────────
+async function lancar(){
+  const valor   = parseFloat(document.getElementById('fValor').value)||0;
+  const desc    = document.getElementById('fDesc').value.trim();
+  const contrato= document.getElementById('fContrato').value.trim().toUpperCase();
+  const data    = document.getElementById('fData').value;
+  const user    = document.getElementById('fUser').value;
+
+  if(!valor){toast('Informe o valor.','err');return;}
+
+  if(TIPO==='despesa'){
+    const cat=CAT_SEL||document.getElementById('fCategoria').value.trim();
+    if(!cat){toast('Selecione uma categoria.','err');return;}
+
+    const desp={
+      id: Date.now().toString(36)+Math.random().toString(36).substr(2,4),
+      tipo:'despesa', data, valor, categoria:cat,
+      descricao:desc, contrato, lancadoPor:user,
+      criadoEm:Date.now()
+    };
+    DESPESAS.unshift(desp);
+    salvarLocal();
+    await enviarServidor('save_despesa',desp);
+    toast('Despesa lançada!','ok');
+    resetForm();
+
+  }else{
+    const tipoRec=document.getElementById('fTipoReceita').value;
+    if(!contrato){toast('Informe o nº do contrato para receita.','err');return;}
+
+    const rec={
+      id: Date.now().toString(36)+Math.random().toString(36).substr(2,4),
+      tipo:'receita', data, valor, categoria:tipoRec,
+      descricao:desc, contrato, lancadoPor:user,
+      criadoEm:Date.now()
+    };
+    DESPESAS.unshift(rec);
+    // Atualiza receita do projeto se existir
+    const proj=PROJETOS.find(p=>p.contrato===contrato);
+    if(proj){proj.valorVenda=(proj.valorVenda||0)+valor;salvarLocal();}
+    await enviarServidor('save_receita',rec);
+    toast('Receita lançada!','ok');
+    resetForm();
+  }
+}
+
+function resetForm(){
+  document.getElementById('fValor').value='';
+  document.getElementById('fDesc').value='';
+  document.getElementById('fContrato').value='';
+  document.getElementById('fData').value=hoje();
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+  CAT_SEL='';
+  setTipo('despesa');
+}
+
+// ── PROJETO ──────────────────────────────────────────────
+function openAddProjeto(){
+  document.getElementById('pjData').value=hoje();
+  document.getElementById('pjContrato').value='';
+  document.getElementById('pjCliente').value='';
+  document.getElementById('pjValor').value='';
+  document.getElementById('pjParceiro').value='';
+  document.getElementById('pjObs').value='';
+  openOv('ovProjeto');
+}
+
+async function salvarProjeto(){
+  const contrato=document.getElementById('pjContrato').value.trim().toUpperCase();
+  const cliente =document.getElementById('pjCliente').value.trim();
+  const valor   =parseFloat(document.getElementById('pjValor').value)||0;
+  const data    =document.getElementById('pjData').value;
+  const vendedor=document.getElementById('pjVendedor').value;
+  const parceiro=document.getElementById('pjParceiro').value.trim();
+  const obs     =document.getElementById('pjObs').value.trim();
+
+  if(!contrato||!cliente){toast('Contrato e cliente são obrigatórios.','err');return;}
+  if(PROJETOS.find(p=>p.contrato===contrato)){toast('Contrato já cadastrado.','err');return;}
+
+  const proj={contrato,cliente,valorVenda:valor,data,vendedor,parceiro,obs,criadoEm:Date.now()};
+  PROJETOS.push(proj);
+  salvarLocal();
+  atualizarDatalist();
+  await enviarServidor('save_projeto',proj);
+  toast('Projeto salvo!','ok');
+  closeOv('ovProjeto');
+  renderProjetos();
+}
+
+// ── VINCULAR ─────────────────────────────────────────────
+function abrirVincular(id,desc){
+  VINC_ID=id;
+  document.getElementById('vincDesc').textContent=desc;
+  document.getElementById('vincContrato').value='';
+  openOv('ovVincular');
+}
+
+async function confirmarVinculo(){
+  const contrato=document.getElementById('vincContrato').value.trim().toUpperCase();
+  if(!contrato){toast('Informe o contrato.','err');return;}
+  const desp=DESPESAS.find(d=>d.id===VINC_ID);
+  if(!desp){toast('Despesa não encontrada.','err');return;}
+  desp.contrato=contrato;
+  salvarLocal();
+  await enviarServidor('vincular',{id:VINC_ID,contrato});
+  toast('Vinculado ao contrato '+contrato,'ok');
+  closeOv('ovVincular');
+  renderDespesas();
+  renderResumo();
+}
+
+// ── RENDER PROJETOS ──────────────────────────────────────
+function renderProjetos(){
+  const tbody=document.getElementById('tbodyProjetos');
+  const fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0});
+
+  // KPIs
+  let totalRec=0,totalDesp=0;
+  PROJETOS.forEach(p=>{
+    const rec=p.valorVenda||0;
+    const desp=DESPESAS.filter(d=>d.contrato===p.contrato&&d.tipo==='despesa').reduce((s,d)=>s+(d.valor||0),0);
+    totalRec+=rec;totalDesp+=desp;
+  });
+  document.getElementById('kTotalProj').textContent=PROJETOS.length;
+  document.getElementById('kReceita').textContent=fmt(totalRec);
+  document.getElementById('kDespesas').textContent=fmt(totalDesp);
+  const mg=totalRec-totalDesp;
+  const kMarg=document.getElementById('kMargem');
+  kMarg.textContent=fmt(mg);
+  kMarg.style.color=mg>=0?'var(--green)':'var(--red)';
+
+  if(!PROJETOS.length){
+    tbody.innerHTML=`<tr><td colspan="6"><div class="empty"><div class="empty-ico">📂</div><div class="empty-txt">Nenhum projeto cadastrado.<br>Clique em "+ Projeto" para adicionar.</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML=PROJETOS.map(p=>{
+    const rec=p.valorVenda||0;
+    const desp=DESPESAS.filter(d=>d.contrato===p.contrato&&d.tipo==='despesa').reduce((s,d)=>s+(d.valor||0),0);
+    const mg=rec-desp;
+    const cor=mg>=0?'var(--green)':'var(--red)';
+    return`<tr>
+      <td><span class="badge badge-b">${p.contrato}</span></td>
+      <td>${p.cliente}<div style="font-size:10px;color:var(--t3)">${p.vendedor}${p.parceiro?' · '+p.parceiro:''}</div></td>
+      <td style="color:var(--accent)">${fmt(rec)}</td>
+      <td style="color:var(--red)">${fmt(desp)}</td>
+      <td style="color:${cor};font-weight:700">${fmt(mg)}</td>
+      <td><button class="btn btn-g btn-sm" onclick="filtrarPorContrato('${p.contrato}')">Ver</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function filtrarPorContrato(c){
+  document.getElementById('searchDesp').value=c;
+  openTab('despesas');
+}
+
+// ── RENDER DESPESAS ──────────────────────────────────────
+function renderDespesas(){
+  const q=(document.getElementById('searchDesp').value||'').toLowerCase();
+  const cat=document.getElementById('filterCat').value;
+  const fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0});
+  const fmtD=d=>{if(!d)return'—';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`};
+
+  let lista=DESPESAS.filter(d=>{
+    const ok1=!q||(d.contrato||'').toLowerCase().includes(q)||(d.descricao||'').toLowerCase().includes(q)||(d.categoria||'').toLowerCase().includes(q)||(d.cliente||'').toLowerCase().includes(q);
+    const ok2=!cat||(d.categoria||'')=== cat;
+    return ok1&&ok2;
+  });
+
+  document.getElementById('despCount').textContent=lista.length+' lançamentos';
+
+  if(!lista.length){
+    document.getElementById('listaDespesas').innerHTML=`<div class="empty" style="padding:30px"><div class="empty-ico">🔍</div><div class="empty-txt">Nenhum resultado</div></div>`;
+    return;
+  }
+
+  document.getElementById('listaDespesas').innerHTML=lista.map(d=>{
+    const isDesp=d.tipo!=='receita';
+    const cor=isDesp?'var(--red)':'var(--green)';
+    const sinal=isDesp?'−':'+'  ;
+    const catIcon={'Gasolina':'⛽','Deslocamento':'🚗','Material':'🔧','Comissão':'🤝','Equipamento':'📦','Venda Projeto':'💰','Entrada':'💰','Parcela':'💰','Financiamento':'🏦'}[d.categoria]||'📋';
+    return`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--b2)">
+      <div style="font-size:22px;width:36px;text-align:center;flex-shrink:0">${catIcon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.descricao||d.categoria||'—'}</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:2px">
+          ${fmtD(d.data)} · ${d.lancadoPor||'—'}
+          ${d.contrato?`· <span style="color:var(--blue)">${d.contrato}</span>`:`<span style="color:var(--yellow)"> · sem contrato</span>`}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:14px;font-weight:700;color:${cor}">${sinal}${fmt(d.valor)}</div>
+        ${!d.contrato&&isDesp?`<button class="btn btn-g btn-sm" onclick="abrirVincular('${d.id}','${(d.descricao||'').replace(/'/g,"\\'")}')">Vincular</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER RESUMO ────────────────────────────────────────
+function renderResumo(){
+  const fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0});
+
+  const totalRec=DESPESAS.filter(d=>d.tipo==='receita').reduce((s,d)=>s+(d.valor||0),0);
+  const totalDesp=DESPESAS.filter(d=>d.tipo!=='receita').reduce((s,d)=>s+(d.valor||0),0);
+  const saldo=totalRec-totalDesp;
+  const semContrato=DESPESAS.filter(d=>d.tipo!=='receita'&&!d.contrato);
+
+  document.getElementById('rReceita').textContent=fmt(totalRec);
+  document.getElementById('rDespesas').textContent=fmt(totalDesp);
+  const rSaldo=document.getElementById('rSaldo');
+  rSaldo.textContent=fmt(saldo);
+  rSaldo.style.color=saldo>=0?'var(--green)':'var(--red)';
+  document.getElementById('rSemContrato').textContent=fmt(semContrato.reduce((s,d)=>s+(d.valor||0),0));
+
+  // Sem contrato
+  const sc=document.getElementById('listaSemContrato');
+  if(!semContrato.length){
+    sc.innerHTML=`<div class="empty" style="padding:20px"><div class="empty-txt">Nenhuma despesa sem contrato</div></div>`;
+  }else{
+    sc.innerHTML=semContrato.map(d=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--b2)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600">${d.descricao||d.categoria}</div>
+          <div style="font-size:10px;color:var(--t3)">${d.data||'—'} · ${d.categoria}</div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--red);margin-right:8px">−${fmt(d.valor)}</div>
+        <button class="btn btn-y btn-sm" style="background:var(--yellow-d);color:var(--yellow);border:1px solid rgba(251,191,36,.3)" onclick="abrirVincular('${d.id}','${(d.descricao||'').replace(/'/g,"\\'")}')">Vincular</button>
+      </div>`).join('');
+  }
+
+  // Por categoria
+  const cats={};
+  DESPESAS.filter(d=>d.tipo!=='receita').forEach(d=>{
+    const c=d.categoria||'Outros';
+    if(!cats[c])cats[c]={total:0,qty:0};
+    cats[c].total+=(d.valor||0);cats[c].qty++;
+  });
+  const catEl=document.getElementById('porCategoria');
+  const catIcons={'Gasolina':'⛽','Deslocamento':'🚗','Material':'🔧','Comissão':'🤝','Equipamento':'📦','Outros':'📋'};
+  if(!Object.keys(cats).length){
+    catEl.innerHTML=`<div class="empty-txt" style="color:var(--t3);text-align:center;padding:12px">Nenhuma despesa</div>`;
+    return;
+  }
+  const sorted=Object.entries(cats).sort((a,b)=>b[1].total-a[1].total);
+  const maxVal=sorted[0][1].total;
+  catEl.innerHTML=sorted.map(([cat,v])=>`
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px">${catIcons[cat]||'📋'} ${cat} <span style="color:var(--t3);font-size:10px">(${v.qty})</span></span>
+        <span style="font-size:12px;font-weight:700;color:var(--red)">${fmt(v.total)}</span>
+      </div>
+      <div style="height:4px;background:var(--s3);border-radius:2px"><div style="height:100%;width:${(v.total/maxVal*100).toFixed(0)}%;background:var(--accent);border-radius:2px"></div></div>
+    </div>`).join('');
+}
+
+function renderAll(){renderProjetos();renderDespesas();renderResumo();}
+
+// ── SERVIDOR ─────────────────────────────────────────────
+function setSyncDot(s){
+  const d=document.getElementById('syncDot');
+  d.className='sync-dot'+({ok:' ok',err:' err',loading:' loading'}[s]||'');
+}
+
+async function enviarServidor(action,data){
+  const url=getUrl();
+  if(!url)return;
+  setSyncDot('loading');
+  try{
+    await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...data,_ts:Date.now()})});
+    setSyncDot('ok');
+  }catch(e){setSyncDot('err');}
+}
+
+async function sincronizar(){
+  const url=getUrl();
+  if(!url){toast('Configure a URL do Apps Script primeiro.','err');return;}
+  setSyncDot('loading');
+  document.getElementById('cfgStatus').textContent='Sincronizando...';
+  try{
+    const res=await fetch(url+'?action=get_data&_='+Date.now());
+    const json=await res.json();
+    if(json.despesas){DESPESAS=json.despesas;localStorage.setItem('lg_fin_despesas',JSON.stringify(DESPESAS));}
+    if(json.projetos){PROJETOS=json.projetos;localStorage.setItem('lg_fin_projetos',JSON.stringify(PROJETOS));}
+    atualizarDatalist();
+    renderAll();
+    setSyncDot('ok');
+    document.getElementById('cfgStatus').textContent='Última sync: '+new Date().toLocaleTimeString('pt-BR');
+    toast('Dados atualizados!','ok');
+  }catch(e){
+    setSyncDot('err');
+    document.getElementById('cfgStatus').textContent='Erro de conexão';
+    toast('Erro ao sincronizar.','err');
+  }
+}
+
+// ── LOCAL STORAGE ────────────────────────────────────────
+function salvarLocal(){
+  localStorage.setItem('lg_fin_despesas',JSON.stringify(DESPESAS));
+  localStorage.setItem('lg_fin_projetos',JSON.stringify(PROJETOS));
+}
+function carregarLocal(){
+  try{DESPESAS=JSON.parse(localStorage.getItem('lg_fin_despesas')||'[]');}catch{DESPESAS=[];}
+  try{PROJETOS=JSON.parse(localStorage.getItem('lg_fin_projetos')||'[]');}catch{PROJETOS=[];}
+}
+
+// ── DATALIST ─────────────────────────────────────────────
+function atualizarDatalist(){
+  const dl=document.getElementById('listaContratos');
+  dl.innerHTML=PROJETOS.map(p=>`<option value="${p.contrato}">${p.contrato} — ${p.cliente}</option>`).join('');
+}
+
+// ── MODAL ────────────────────────────────────────────────
+function openOv(id){document.getElementById(id).classList.add('open');}
+function closeOv(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+
+// ── TOAST ────────────────────────────────────────────────
+let _tt;
+function toast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+type+' show';
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ── UTILS ────────────────────────────────────────────────
+function hoje(){
+  const d=new Date();
+  return d.toISOString().split('T')[0];
+}
+
+// ── INIT ─────────────────────────────────────────────────
+(function init(){
+  document.getElementById('fData').value=hoje();
+  document.getElementById('pjData')&&(document.getElementById('pjData').value=hoje());
+  carregarLocal();
+  atualizarDatalist();
+  // Auto-sync se URL configurada
+  const url=getUrl();
+  if(url){setSyncDot('loading');sincronizar();}
+})();
+</script>
+</body>
+</html>
