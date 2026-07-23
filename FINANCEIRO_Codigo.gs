@@ -2,16 +2,20 @@
 //  LUMENGRID — Financeiro · Google Apps Script Backend
 //  Planilha: https://docs.google.com/spreadsheets/d/1b5bp7uPF2jDsR2i9CvGVdyhfkyuqYm-FyKevn3o8foM
 //  Cole em: script.google.com → Novo Projeto → Colar → Implantar como Web App
+//  Executar como: Você · Quem acessa: Qualquer pessoa
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const SHEET_ID_FIN = '1b5bp7uPF2jDsR2i9CvGVdyhfkyuqYm-FyKevn3o8foM';
 
-// ── Cabeçalhos ────────────────────────────────────────────────
-const HDR_PROJETOS = [
-  'Nº Contrato','Cliente','Valor Venda (R$)','Data','Vendedor','Parceiro','Observação','Criado em'
+// ── Cabeçalhos (correspondem exatamente ao dashboard.html) ────
+const HDR_RECEITAS = [
+  'ID','Data','Cliente','CPF/CNPJ','Endereço','Tipo','kVp','Módulos',
+  'Inversor','Bateria','Valor Total (R$)','Valor Recebido (R$)',
+  'Forma Pagamento','Condições','Consultor','Status','Observações','Nº Contrato','Criado em'
 ];
 const HDR_DESPESAS = [
-  'ID','Tipo','Data','Nº Contrato','Categoria','Descrição','Valor (R$)','Lançado por','Criado em'
+  'ID','Data','Descrição','Categoria','Valor (R$)','Método',
+  'Observação','Projeto ID','Criado em'
 ];
 
 // ── CORS ──────────────────────────────────────────────────────
@@ -27,8 +31,7 @@ function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'get_data';
   let result;
   try {
-    if (action === 'get_data')     result = getData();
-    else if (action === 'get_projetos') result = { projetos: getProjetos() };
+    if (action === 'get_data') result = getData();
     else result = { error: 'Ação desconhecida: ' + action };
   } catch(err) {
     result = { error: err.message };
@@ -45,9 +48,7 @@ function doPost(e) {
     const body   = JSON.parse(e.postData.contents);
     const action = body.action;
     if      (action === 'save_despesa') result = saveDespesa(body);
-    else if (action === 'save_receita') result = saveDespesa(body); // mesmo fluxo
-    else if (action === 'save_projeto') result = saveProjeto(body);
-    else if (action === 'vincular')     result = vincularContrato(body);
+    else if (action === 'save_receita') result = saveReceita(body);
     else result = { error: 'Ação desconhecida: ' + action };
   } catch(err) {
     result = { error: err.message };
@@ -57,11 +58,11 @@ function doPost(e) {
     .setMimeType(ContentService.MimeType.JSON));
 }
 
-// ── GET DATA (tudo) ───────────────────────────────────────────
+// ── GET DATA ──────────────────────────────────────────────────
 function getData() {
   return {
-    projetos:  getProjetos(),
-    despesas:  getDespesas(),
+    receitas: getReceitas(),
+    despesas: getDespesas(),
   };
 }
 
@@ -80,51 +81,71 @@ function garantirAba(ss, nome, headers) {
   return sheet;
 }
 
-// ── PROJETOS ──────────────────────────────────────────────────
-function getProjetos() {
+// ── RECEITAS ──────────────────────────────────────────────────
+function getReceitas() {
   const ss    = SpreadsheetApp.openById(SHEET_ID_FIN);
-  const sheet = ss.getSheetByName('Projetos');
+  const sheet = ss.getSheetByName('Receitas');
   if (!sheet || sheet.getLastRow() < 2) return [];
 
   const data    = sheet.getDataRange().getValues();
   const headers = data[0];
   return data.slice(1).filter(r => r[0]).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
+    const o = {};
+    headers.forEach((h, i) => o[h] = row[i]);
     return {
-      contrato:  obj['Nº Contrato']    || '',
-      cliente:   obj['Cliente']         || '',
-      valorVenda:parseFloat(obj['Valor Venda (R$)']) || 0,
-      data:      obj['Data']            || '',
-      vendedor:  obj['Vendedor']        || '',
-      parceiro:  obj['Parceiro']        || '',
-      obs:       obj['Observação']      || '',
+      id:         String(o['ID']                  || ''),
+      data:       fmtIsoDate(o['Data']            || ''),
+      cliente:    o['Cliente']                     || '',
+      doc:        o['CPF/CNPJ']                    || '',
+      ender:      o['Endereço']                    || '',
+      tipo:       o['Tipo']                        || '',
+      kvp:        o['kVp']                         || '',
+      modulos:    o['Módulos']                     || '',
+      inversor:   o['Inversor']                    || '',
+      bateria:    o['Bateria']                     || '',
+      valor:      parseFloat(o['Valor Total (R$)'])   || 0,
+      recebido:   parseFloat(o['Valor Recebido (R$)']) || 0,
+      pagamento:  o['Forma Pagamento']             || '',
+      condicoes:  o['Condições']                   || '',
+      consultor:  o['Consultor']                   || '',
+      status:     o['Status']                      || '',
+      obs:        o['Observações']                 || '',
+      numContrato:String(o['Nº Contrato']          || ''),
     };
   });
 }
 
-function saveProjeto(body) {
+function saveReceita(body) {
   const ss    = SpreadsheetApp.openById(SHEET_ID_FIN);
-  const sheet = garantirAba(ss, 'Projetos', HDR_PROJETOS);
+  const sheet = garantirAba(ss, 'Receitas', HDR_RECEITAS);
 
-  // Verifica duplicata
+  // Evita duplicata por ID
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === String(body.contrato || '').trim()) {
-      // Atualiza valor se já existe
-      sheet.getRange(i + 1, 3).setValue(body.valorVenda || 0);
-      return { ok: true, updated: true };
+    if (String(data[i][0]) === String(body.id || '')) {
+      return { ok: true, skipped: true };
     }
   }
 
   sheet.appendRow([
-    body.contrato   || '',
-    body.cliente    || '',
-    body.valorVenda || 0,
-    body.data       || new Date().toLocaleDateString('pt-BR'),
-    body.vendedor   || '',
-    body.parceiro   || '',
-    body.obs        || '',
+    body.id          || Utilities.getUuid(),
+    body.data        || '',
+    body.cliente     || '',
+    body.doc         || '',
+    body.ender       || '',
+    body.tipo        || '',
+    body.kvp         || '',
+    body.modulos     || '',
+    body.inversor    || '',
+    body.bateria     || '',
+    parseFloat(body.valor)     || 0,
+    parseFloat(body.recebido)  || 0,
+    body.pagamento   || '',
+    body.condicoes   || '',
+    body.consultor   || '',
+    body.status      || '',
+    body.obs         || '',
+    body.numContrato || '',
     new Date().toLocaleString('pt-BR'),
   ]);
   return { ok: true, created: true };
@@ -139,58 +160,52 @@ function getDespesas() {
   const data    = sheet.getDataRange().getValues();
   const headers = data[0];
   return data.slice(1).filter(r => r[0]).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
+    const o = {};
+    headers.forEach((h, i) => o[h] = row[i]);
     return {
-      id:         String(obj['ID']           || ''),
-      tipo:       obj['Tipo']                 || 'despesa',
-      data:       obj['Data']                 || '',
-      contrato:   String(obj['Nº Contrato']  || ''),
-      categoria:  obj['Categoria']            || '',
-      descricao:  obj['Descrição']            || '',
-      valor:      parseFloat(obj['Valor (R$)']) || 0,
-      lancadoPor: obj['Lançado por']          || '',
-      criadoEm:   obj['Criado em']            || '',
+      id:        String(o['ID']           || ''),
+      data:      fmtIsoDate(o['Data']     || ''),
+      desc:      o['Descrição']            || '',
+      cat:       o['Categoria']            || '',
+      valor:     parseFloat(o['Valor (R$)']) || 0,
+      metodo:    o['Método']               || '',
+      obs:       o['Observação']           || '',
+      projetoId: String(o['Projeto ID']   || ''),
     };
-  }).reverse(); // mais recentes primeiro
+  }).reverse();
 }
 
 function saveDespesa(body) {
   const ss    = SpreadsheetApp.openById(SHEET_ID_FIN);
   const sheet = garantirAba(ss, 'Despesas', HDR_DESPESAS);
 
-  sheet.appendRow([
-    body.id          || Utilities.getUuid(),
-    body.tipo        || 'despesa',
-    body.data        || new Date().toLocaleDateString('pt-BR'),
-    body.contrato    || '',
-    body.categoria   || '',
-    body.descricao   || '',
-    parseFloat(body.valor) || 0,
-    body.lancadoPor  || '',
-    new Date().toLocaleString('pt-BR'),
-  ]);
-  return { ok: true };
-}
-
-// ── VINCULAR CONTRATO ─────────────────────────────────────────
-function vincularContrato(body) {
-  const ss    = SpreadsheetApp.openById(SHEET_ID_FIN);
-  const sheet = ss.getSheetByName('Despesas');
-  if (!sheet) return { error: 'Aba Despesas não encontrada' };
-
-  const data     = sheet.getDataRange().getValues();
-  const headers  = data[0];
-  const idCol    = headers.indexOf('ID');
-  const contCol  = headers.indexOf('Nº Contrato') + 1;
-
+  // Evita duplicata por ID
+  const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][idCol]) === String(body.id)) {
-      sheet.getRange(i + 1, contCol).setValue(body.contrato || '');
-      return { ok: true };
+    if (String(data[i][0]) === String(body.id || '')) {
+      return { ok: true, skipped: true };
     }
   }
-  return { error: 'Despesa não encontrada: ' + body.id };
+
+  sheet.appendRow([
+    body.id        || Utilities.getUuid(),
+    body.data      || '',
+    body.desc      || '',
+    body.cat       || '',
+    parseFloat(body.valor) || 0,
+    body.metodo    || '',
+    body.obs       || '',
+    body.projetoId || '',
+    new Date().toLocaleString('pt-BR'),
+  ]);
+  return { ok: true, created: true };
+}
+
+// ── HELPER: converte Date objeto ou string p/ YYYY-MM-DD ──────
+function fmtIsoDate(v) {
+  if (!v) return '';
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  return String(v).slice(0, 10);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -201,6 +216,6 @@ function vincularContrato(body) {
 // 4. Tipo: App da Web
 // 5. Executar como: Você (sua conta Google)
 // 6. Quem tem acesso: Qualquer pessoa
-// 7. Clique em Implantar → copie a URL
-// 8. Cole a URL em financeiro.html → aba Config
+// 7. Clique em Implantar → copie a URL gerada
+// 8. No dashboard.html → botão engrenagem (Config) → cole a URL → Salvar
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
