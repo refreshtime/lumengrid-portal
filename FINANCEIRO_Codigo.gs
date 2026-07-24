@@ -49,6 +49,7 @@ function doPost(e) {
     const action = body.action;
     if      (action === 'save_despesa') result = saveDespesa(body);
     else if (action === 'save_receita') result = saveReceita(body);
+    else if (action === 'vincular')     result = vincularDespesa(body);
     else result = { error: 'Ação desconhecida: ' + action };
   } catch(err) {
     result = { error: err.message };
@@ -201,6 +202,28 @@ function saveDespesa(body) {
     new Date().toLocaleString('pt-BR'),
   ]);
   return { ok: true, created: true };
+}
+
+// ── VINCULAR DESPESA A PROJETO ────────────────────────────────
+function vincularDespesa(body) {
+  const ss    = SpreadsheetApp.openById(SHEET_ID_FIN);
+  const sheet = ss.getSheetByName('Despesas');
+  if (!sheet) return { error: 'Aba Despesas não encontrada' };
+
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const idCol   = headers.indexOf('ID');
+  const ncCol   = headers.indexOf('Nº Contrato') + 1;
+  const pidCol  = headers.indexOf('Projeto ID') + 1;
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][idCol]) === String(body.id || '')) {
+      if (ncCol  > 0) sheet.getRange(i + 1, ncCol).setValue(body.numContrato || '');
+      if (pidCol > 0) sheet.getRange(i + 1, pidCol).setValue(body.projetoId  || '');
+      return { ok: true };
+    }
+  }
+  return { error: 'Despesa não encontrada: ' + body.id };
 }
 
 // ── HELPER: converte Date objeto ou string p/ YYYY-MM-DD ──────

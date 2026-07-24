@@ -594,6 +594,26 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);min-hei
 
 </div><!-- /content -->
 
+<!-- ═══ VINCULAR MODAL ═══ -->
+<div class="cfg-modal" id="vincModal" onclick="if(event.target===this)fecharVincular()">
+  <div class="cfg-box">
+    <div class="cfg-title">Vincular Despesa a Projeto</div>
+    <div class="cfg-sub" id="vincDesc" style="margin-bottom:14px;color:var(--t2)"></div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+      <label style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)">Buscar cliente</label>
+      <input class="fi" id="vincBusca" placeholder="Digite o nome do cliente…" oninput="filtrarVincClientes()">
+    </div>
+    <div id="vincLista" style="max-height:220px;overflow-y:auto;border:1px solid var(--b1);border-radius:7px;margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-g" onclick="fecharVincular()">Cancelar</button>
+      <button class="btn btn-a" onclick="salvarVincular()" id="vincSalvarBtn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        Vincular
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ CONFIG MODAL ═══ -->
 <div class="cfg-modal" id="cfgModal" onclick="if(event.target===this)closeCfg()">
   <div class="cfg-box">
@@ -732,6 +752,49 @@ function addDespesa(){
 }
 function deleteDespesa(id){if(!confirm('Excluir esta despesa?'))return;despesas=despesas.filter(d=>d.id!==id);saveData('despesas',despesas);renderDespesas();}
 
+// ── VINCULAR DESPESA ──
+let _vincId=null,_vincProjetoSel=null;
+function abrirVincular(id,desc){
+  _vincId=id;_vincProjetoSel=null;
+  document.getElementById('vincDesc').textContent='Despesa: '+desc;
+  document.getElementById('vincBusca').value='';
+  document.getElementById('vincSalvarBtn').disabled=true;
+  filtrarVincClientes();
+  document.getElementById('vincModal').classList.add('show');
+  setTimeout(()=>document.getElementById('vincBusca').focus(),100);
+}
+function fecharVincular(){document.getElementById('vincModal').classList.remove('show');_vincId=null;_vincProjetoSel=null;}
+function filtrarVincClientes(){
+  const q=document.getElementById('vincBusca').value.toLowerCase();
+  const lista=document.getElementById('vincLista');
+  const fil=receitas.filter(r=>!q||r.cliente.toLowerCase().includes(q)||(r.numContrato||'').toLowerCase().includes(q));
+  if(!fil.length){lista.innerHTML='<div style="padding:14px;text-align:center;font-size:12px;color:var(--t3)">Nenhum projeto encontrado</div>';return;}
+  lista.innerHTML=fil.map(r=>`
+    <div onclick="selecionarVincCliente('${r.id}')" id="vc_${r.id}" style="padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--b2);transition:background .1s;display:flex;flex-direction:column;gap:2px" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background=(_vincProjetoSel==='${r.id}'?'var(--accent-d)':'')">
+      <div style="font-size:12px;font-weight:600;color:var(--t1)">${r.cliente}</div>
+      <div style="font-size:10px;color:var(--t3)">${r.numContrato||'sem contrato'} · ${fmtDate(r.data)} · ${fmtBRL(r.valor)}</div>
+    </div>`).join('');
+}
+function selecionarVincCliente(projetoId){
+  _vincProjetoSel=projetoId;
+  document.querySelectorAll('#vincLista>div').forEach(el=>{
+    el.style.background=el.id==='vc_'+projetoId?'var(--accent-d)':'';
+  });
+  document.getElementById('vincSalvarBtn').disabled=false;
+}
+function salvarVincular(){
+  if(!_vincId||!_vincProjetoSel)return;
+  const desp=despesas.find(d=>d.id===_vincId);
+  const proj=receitas.find(r=>r.id===_vincProjetoSel);
+  if(!desp||!proj)return;
+  desp.projetoId=proj.id;
+  desp.numContrato=proj.numContrato||'';
+  saveData('despesas',despesas);
+  enviarSheets('vincular',{id:desp.id,projetoId:proj.id,numContrato:proj.numContrato||''});
+  fecharVincular();
+  renderDespesas();
+}
+
 function renderDespesas(){
   monthFilter('despFiltroMes',despesas);
   const fM=document.getElementById('despFiltroMes').value;
@@ -758,7 +821,10 @@ function renderDespesas(){
     let att=`<span style="color:var(--t3);font-size:11px">—</span>`;
     if(d.fileData){att=d.fileData.startsWith('data:image')?`<img class="thumb" src="${d.fileData}" onclick="openModal('${d.fileData}')" title="Ver comprovante">`:`<a class="pdf-lnk" href="${d.fileData}" download="${d.fileName||'comprovante'}">${icoPdf} ${(d.fileName||'PDF').slice(0,14)}</a>`;}
     const rec=d.projetoId?receitas.find(r=>r.id===d.projetoId):null;
-    const projLabel=rec?`<span class="badge" style="background:rgba(232,100,26,.12);color:var(--accent);font-size:10px">${rec.cliente}${rec.numContrato?' '+rec.numContrato:''}</span>`:`<span style="color:var(--t3);font-size:11px">—</span>`;
+    const icoLink=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="11" height="11"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>`;
+    const projLabel=rec
+      ?`<span class="badge" style="background:rgba(232,100,26,.12);color:var(--accent);font-size:10px">${rec.cliente}${rec.numContrato?' · '+rec.numContrato:''}</span>`
+      :`<button class="btn btn-g btn-sm" onclick="abrirVincular('${d.id}','${d.desc.replace(/'/g,'').slice(0,30)}')" title="Vincular a um projeto">${icoLink} Vincular</button>`;
     return`<tr>`+
       `<td class="mu">${fmtDate(d.data)}</td>`+
       `<td style="font-weight:500">${d.desc}</td>`+
