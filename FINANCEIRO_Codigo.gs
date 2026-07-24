@@ -128,6 +128,7 @@ function saveReceita(body) {
     }
   }
 
+  atualizarResumos();
   sheet.appendRow([
     body.id          || Utilities.getUuid(),
     body.data        || '',
@@ -189,6 +190,7 @@ function saveDespesa(body) {
     }
   }
 
+  atualizarResumos();
   sheet.appendRow([
     body.id        || Utilities.getUuid(),
     body.data      || '',
@@ -224,6 +226,117 @@ function vincularDespesa(body) {
     }
   }
   return { error: 'Despesa não encontrada: ' + body.id };
+}
+
+// ── RESUMOS AUTOMÁTICOS ───────────────────────────────────────
+function atualizarResumos() {
+  try {
+    const ss       = SpreadsheetApp.openById(SHEET_ID_FIN);
+    const recs     = getReceitas();
+    const desps    = getDespesas();
+    gerarCompetencia(ss, recs, desps);
+    gerarFluxoCaixa(ss, recs, desps);
+  } catch(e) {
+    Logger.log('atualizarResumos erro: ' + e.message);
+  }
+}
+
+function gerarCompetencia(ss, recs, desps) {
+  let sheet = ss.getSheetByName('📊 Competência');
+  if (!sheet) { sheet = ss.insertSheet('📊 Competência'); }
+  sheet.clearContents();
+
+  const hdrs = ['Mês','Receitas (R$)','Despesas (R$)','Resultado (R$)','Margem %','Acumulado (R$)'];
+  const hdrRow = sheet.getRange(1, 1, 1, hdrs.length);
+  hdrRow.setValues([hdrs]).setBackground('#1a7a3c').setFontColor('#fff').setFontWeight('bold');
+  sheet.setFrozenRows(1);
+
+  const meses = [...new Set([
+    ...recs.map(r => (r.data||'').slice(0,7)),
+    ...desps.map(d => (d.data||'').slice(0,7))
+  ])].filter(Boolean).sort();
+
+  let acum = 0;
+  const rows = meses.map(m => {
+    const rec  = recs .filter(r => (r.data||'').startsWith(m)).reduce((s,r) => s+r.valor, 0);
+    const desp = desps.filter(d => (d.data||'').startsWith(m)).reduce((s,d) => s+d.valor, 0);
+    const res  = rec - desp;
+    const mg   = rec > 0 ? (res / rec * 100).toFixed(1) + '%' : '—';
+    acum += res;
+    return [nomeMes(m), rec, desp, res, mg, acum];
+  });
+
+  // Linha de total
+  const totRec  = recs .reduce((s,r) => s+r.valor, 0);
+  const totDesp = desps.reduce((s,d) => s+d.valor, 0);
+  rows.push(['TOTAL', totRec, totDesp, totRec-totDesp, totRec>0?((totRec-totDesp)/totRec*100).toFixed(1)+'%':'—', '']);
+
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, hdrs.length).setValues(rows);
+    // Formata valores numéricos
+    const fmt = '#,##0.00';
+    [[2,2],[2,3],[2,4],[2,6]].forEach(([c1,c2]) =>
+      sheet.getRange(2, c1, rows.length, c2-c1+1)
+           .setNumberFormat('R$ ' + fmt));
+    // Linha de total em negrito
+    sheet.getRange(rows.length+1, 1, 1, hdrs.length).setFontWeight('bold').setBackground('#f0f0f0');
+    // Resultado: verde se positivo, vermelho se negativo
+    rows.forEach((r, i) => {
+      const cell = sheet.getRange(i+2, 4);
+      if (typeof r[3] === 'number') cell.setFontColor(r[3] >= 0 ? '#1a7a3c' : '#c0392b');
+    });
+  }
+  sheet.autoResizeColumns(1, hdrs.length);
+}
+
+function gerarFluxoCaixa(ss, recs, desps) {
+  let sheet = ss.getSheetByName('💰 Fluxo de Caixa');
+  if (!sheet) { sheet = ss.insertSheet('💰 Fluxo de Caixa'); }
+  sheet.clearContents();
+
+  const hdrs = ['Mês','Entradas Recebidas (R$)','Receita a Receber (R$)','Saídas (R$)','Saldo do Mês (R$)','Saldo Acumulado (R$)'];
+  sheet.getRange(1, 1, 1, hdrs.length)
+       .setValues([hdrs]).setBackground('#1a4a7a').setFontColor('#fff').setFontWeight('bold');
+  sheet.setFrozenRows(1);
+
+  const meses = [...new Set([
+    ...recs .map(r => (r.data||'').slice(0,7)),
+    ...desps.map(d => (d.data||'').slice(0,7))
+  ])].filter(Boolean).sort();
+
+  let acum = 0;
+  const rows = meses.map(m => {
+    const recebido   = recs .filter(r => (r.data||'').startsWith(m)).reduce((s,r) => s+(r.recebido||0), 0);
+    const aReceber   = recs .filter(r => (r.data||'').startsWith(m)).reduce((s,r) => s+Math.max(0,(r.valor||0)-(r.recebido||0)), 0);
+    const saidas     = desps.filter(d => (d.data||'').startsWith(m)).reduce((s,d) => s+d.valor, 0);
+    const saldo      = recebido - saidas;
+    acum += saldo;
+    return [nomeMes(m), recebido, aReceber, saidas, saldo, acum];
+  });
+
+  const totRec = recs .reduce((s,r) => s+(r.recebido||0), 0);
+  const totAR  = recs .reduce((s,r) => s+Math.max(0,(r.valor||0)-(r.recebido||0)), 0);
+  const totSai = desps.reduce((s,d) => s+d.valor, 0);
+  rows.push(['TOTAL', totRec, totAR, totSai, totRec-totSai, '']);
+
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, hdrs.length).setValues(rows);
+    const fmt = '#,##0.00';
+    sheet.getRange(2, 2, rows.length, 5).setNumberFormat('R$ ' + fmt);
+    sheet.getRange(rows.length+1, 1, 1, hdrs.length).setFontWeight('bold').setBackground('#f0f0f0');
+    rows.forEach((r, i) => {
+      const cell = sheet.getRange(i+2, 5);
+      if (typeof r[4] === 'number') cell.setFontColor(r[4] >= 0 ? '#1a7a3c' : '#c0392b');
+    });
+  }
+  sheet.autoResizeColumns(1, hdrs.length);
+}
+
+function nomeMes(m) {
+  if (!m) return '—';
+  const [y, mo] = m.split('-');
+  const ns = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return (ns[+mo-1]||mo) + '/' + y;
 }
 
 // ── HELPER: converte Date objeto ou string p/ YYYY-MM-DD ──────

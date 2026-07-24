@@ -294,6 +294,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);min-hei
 
 <!-- ═══ DESPESAS ═══ -->
 <div class="tab-pane active" id="pane-despesas">
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+    <button class="pill on" onclick="setDespPeriodo('mes',this)">Mês Atual</button>
+    <button class="pill" onclick="setDespPeriodo('mesant',this)">Mês Ant.</button>
+    <button class="pill" onclick="setDespPeriodo('3m',this)">3 Meses</button>
+    <button class="pill" onclick="setDespPeriodo('6m',this)">6 Meses</button>
+    <button class="pill" onclick="setDespPeriodo('ano',this)">Este Ano</button>
+    <button class="pill" onclick="setDespPeriodo('todos',this)">Todos</button>
+    <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
+      <input class="fi" id="despDe" type="date" style="width:130px;height:28px;padding:3px 8px;font-size:11px" oninput="setDespCustom()" title="De">
+      <span style="color:var(--t3);font-size:11px">até</span>
+      <input class="fi" id="despAte" type="date" style="width:130px;height:28px;padding:3px 8px;font-size:11px" oninput="setDespCustom()" title="Até">
+    </div>
+  </div>
   <div class="kpi-row" id="despKpis"></div>
 
   <div class="card">
@@ -354,7 +367,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);min-hei
         Registro de Despesas
       </div>
       <div style="display:flex;gap:8px">
-        <select class="fsel" id="despFiltroMes" style="padding:5px 10px;font-size:11px;height:32px" onchange="renderDespesas()"><option value="">Todos os meses</option></select>
         <select class="fsel" id="despFiltroCat" style="padding:5px 10px;font-size:11px;height:32px;min-width:150px" onchange="renderDespesas()">
           <option value="">Todas as categorias</option>
           <option>Materiais</option><option>Mão de Obra</option><option>Logística</option>
@@ -386,6 +398,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);min-hei
 
 <!-- ═══ RECEITAS ═══ -->
 <div class="tab-pane" id="pane-receitas">
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+    <button class="pill on" onclick="setRecPeriodo('mes',this)">Mês Atual</button>
+    <button class="pill" onclick="setRecPeriodo('mesant',this)">Mês Ant.</button>
+    <button class="pill" onclick="setRecPeriodo('3m',this)">3 Meses</button>
+    <button class="pill" onclick="setRecPeriodo('6m',this)">6 Meses</button>
+    <button class="pill" onclick="setRecPeriodo('ano',this)">Este Ano</button>
+    <button class="pill" onclick="setRecPeriodo('todos',this)">Todos</button>
+    <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
+      <input class="fi" id="recDe" type="date" style="width:130px;height:28px;padding:3px 8px;font-size:11px" oninput="setRecCustom()" title="De">
+      <span style="color:var(--t3);font-size:11px">até</span>
+      <input class="fi" id="recAte" type="date" style="width:130px;height:28px;padding:3px 8px;font-size:11px" oninput="setRecCustom()" title="Até">
+    </div>
+  </div>
   <div class="kpi-row" id="recKpis"></div>
 
   <div class="card">
@@ -459,7 +484,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);min-hei
         Vendas Realizadas
       </div>
       <div style="display:flex;gap:8px">
-        <select class="fsel" id="recFiltroMes" style="padding:5px 10px;font-size:11px;height:32px" onchange="renderReceitas()"><option value="">Todos os meses</option></select>
         <select class="fsel" id="recFiltroStatus" style="padding:5px 10px;font-size:11px;height:32px;min-width:185px" onchange="renderReceitas()">
           <option value="">Todos os status</option>
           <option>Aguardando Instalação</option><option>Em Andamento</option>
@@ -689,6 +713,50 @@ let receitas=loadData('receitas',[]);
 let previsoes=loadData('previsoes',[]);
 let _period=30;
 
+// ── FILTROS DE PERÍODO ──
+let _despDe=''  ,_despAte='';
+let _recDe='' ,_recAte='';
+
+function _periodoRange(tipo){
+  const h=new Date();
+  if(tipo==='mes')    return[h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-01',TODAY];
+  if(tipo==='mesant'){const d=new Date(h.getFullYear(),h.getMonth()-1,1);const f=new Date(h.getFullYear(),h.getMonth(),0);return[d.toISOString().slice(0,10),f.toISOString().slice(0,10)];}
+  if(tipo==='3m') {const d=new Date(h.getFullYear(),h.getMonth()-2,1);return[d.toISOString().slice(0,10),TODAY];}
+  if(tipo==='6m') {const d=new Date(h.getFullYear(),h.getMonth()-5,1);return[d.toISOString().slice(0,10),TODAY];}
+  if(tipo==='ano'){return[h.getFullYear()+'-01-01',TODAY];}
+  return['',''];
+}
+function _setPills(group,btn){document.querySelectorAll(group+' .pill').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');}
+
+function setDespPeriodo(tipo,btn){
+  const [de,ate]=_periodoRange(tipo);
+  _despDe=de;_despAte=ate;
+  _setPills('#pane-despesas',btn);
+  document.getElementById('despDe').value=de;
+  document.getElementById('despAte').value=ate;
+  renderDespesas();
+}
+function setDespCustom(){
+  _despDe=document.getElementById('despDe').value;
+  _despAte=document.getElementById('despAte').value;
+  _setPills('#pane-despesas',null);
+  renderDespesas();
+}
+function setRecPeriodo(tipo,btn){
+  const [de,ate]=_periodoRange(tipo);
+  _recDe=de;_recAte=ate;
+  _setPills('#pane-receitas',btn);
+  document.getElementById('recDe').value=de;
+  document.getElementById('recAte').value=ate;
+  renderReceitas();
+}
+function setRecCustom(){
+  _recDe=document.getElementById('recDe').value;
+  _recAte=document.getElementById('recAte').value;
+  _setPills('#pane-receitas',null);
+  renderReceitas();
+}
+
 // ── UTILS ──
 const TODAY=new Date().toISOString().slice(0,10);
 const MES_ATUAL=TODAY.slice(0,7);
@@ -796,11 +864,10 @@ function salvarVincular(){
 }
 
 function renderDespesas(){
-  monthFilter('despFiltroMes',despesas);
-  const fM=document.getElementById('despFiltroMes').value;
   const fC=document.getElementById('despFiltroCat').value;
   let fil=despesas;
-  if(fM)fil=fil.filter(d=>getMonth(d.data)===fM);
+  if(_despDe)fil=fil.filter(d=>d.data>=_despDe);
+  if(_despAte)fil=fil.filter(d=>d.data<=_despAte);
   if(fC)fil=fil.filter(d=>d.cat===fC);
   const total=fil.reduce((s,d)=>s+d.valor,0);
   const mesTot=despesas.filter(d=>getMonth(d.data)===MES_ATUAL).reduce((s,d)=>s+d.valor,0);
@@ -886,11 +953,10 @@ function updateRecStatus(id,ns){const r=receitas.find(r=>r.id===id);if(r)r.statu
 function toggleCard(id){document.getElementById('vb_'+id).classList.toggle('open');}
 
 function renderReceitas(){
-  monthFilter('recFiltroMes',receitas);
-  const fM=document.getElementById('recFiltroMes').value;
   const fS=document.getElementById('recFiltroStatus').value;
   let fil=receitas;
-  if(fM)fil=fil.filter(r=>getMonth(r.data)===fM);
+  if(_recDe)fil=fil.filter(r=>r.data>=_recDe);
+  if(_recAte)fil=fil.filter(r=>r.data<=_recAte);
   if(fS)fil=fil.filter(r=>r.status===fS);
   const tv=receitas.reduce((s,r)=>s+r.valor,0);
   const tr=receitas.reduce((s,r)=>s+r.recebido,0);
@@ -1128,6 +1194,15 @@ function renderRelProjeto(){
   empty.style.display='none';
   tbody.innerHTML=rows;
 }
+
+// Período padrão = mês atual
+const [_initDe,_initAte]=_periodoRange('mes');
+_despDe=_initDe;_despAte=_initAte;
+_recDe=_initDe;_recAte=_initAte;
+document.getElementById('despDe').value=_initDe;
+document.getElementById('despAte').value=_initAte;
+document.getElementById('recDe').value=_initDe;
+document.getElementById('recAte').value=_initAte;
 
 renderDespesas();
 renderReceitas();
