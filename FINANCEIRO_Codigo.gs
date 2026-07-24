@@ -15,7 +15,7 @@ const HDR_RECEITAS = [
 ];
 const HDR_DESPESAS = [
   'ID','Data','Descrição','Categoria','Valor (R$)','Método',
-  'Observação','Projeto ID','Criado em'
+  'Observação','Nº Contrato','Projeto ID','Criado em'
 ];
 
 // ── CORS ──────────────────────────────────────────────────────
@@ -163,14 +163,15 @@ function getDespesas() {
     const o = {};
     headers.forEach((h, i) => o[h] = row[i]);
     return {
-      id:        String(o['ID']           || ''),
-      data:      fmtIsoDate(o['Data']     || ''),
-      desc:      o['Descrição']            || '',
-      cat:       o['Categoria']            || '',
-      valor:     parseFloat(o['Valor (R$)']) || 0,
-      metodo:    o['Método']               || '',
-      obs:       o['Observação']           || '',
-      projetoId: String(o['Projeto ID']   || ''),
+      id:          String(o['ID']           || ''),
+      data:        fmtIsoDate(o['Data']   || ''),
+      desc:        o['Descrição']          || '',
+      cat:         o['Categoria']          || '',
+      valor:       parseFloat(o['Valor (R$)']) || 0,
+      metodo:      o['Método']             || '',
+      obs:         o['Observação']         || '',
+      numContrato: String(o['Nº Contrato']|| ''),
+      projetoId:   String(o['Projeto ID'] || ''),
     };
   }).reverse();
 }
@@ -194,8 +195,9 @@ function saveDespesa(body) {
     body.cat       || '',
     parseFloat(body.valor) || 0,
     body.metodo    || '',
-    body.obs       || '',
-    body.projetoId || '',
+    body.obs         || '',
+    body.numContrato || '',
+    body.projetoId   || '',
     new Date().toLocaleString('pt-BR'),
   ]);
   return { ok: true, created: true };

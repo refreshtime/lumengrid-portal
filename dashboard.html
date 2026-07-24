@@ -718,11 +718,13 @@ function addDespesa(){
   const obs=document.getElementById('despObs').value.trim();
   if(!desc||!valor){alert('Preencha descrição e valor.');return;}
   const projetoId=document.getElementById('despProjeto').value||'';
-  const _nd={id:genId(),data,desc,cat,valor,metodo,obs,projetoId,fileData:_dFile,fileName:_dName};
+  const _proj=projetoId?receitas.find(r=>r.id===projetoId):null;
+  const _nc=_proj?(_proj.numContrato||''):'';
+  const _nd={id:genId(),data,desc,cat,valor,metodo,obs,projetoId,numContrato:_nc,fileData:_dFile,fileName:_dName};
   despesas.push(_nd);
   despesas.sort((a,b)=>b.data.localeCompare(a.data));
   saveData('despesas',despesas);
-  enviarSheets('save_despesa',{id:_nd.id,data,desc,cat,valor,metodo,obs,projetoId});
+  enviarSheets('save_despesa',{id:_nd.id,data,desc,cat,valor,metodo,obs,projetoId,numContrato:_nc});
   document.getElementById('despDesc').value='';
   document.getElementById('despValor').value='';
   document.getElementById('despObs').value='';
