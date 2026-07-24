@@ -336,6 +336,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);min-hei
             <option>Transferência</option><option>Dinheiro</option><option>Cheque</option>
           </select>
         </div>
+        <div class="fg" style="max-width:150px">
+          <label>Lançado por</label>
+          <select class="fsel" id="despLancadoPor">
+            <option value="">— Selecione —</option>
+            <option>Hingrid</option>
+            <option>Lucas</option>
+          </select>
+        </div>
       </div>
       <div class="frow">
         <div class="fg" style="flex:2"><label>Observação</label><input class="fi" id="despObs" placeholder="NF, fornecedor, referência..."></div>
@@ -376,7 +384,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);min-hei
       </div>
     </div>
     <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Projeto</th><th>Método</th><th>Valor</th><th>Obs.</th><th>Anexo</th><th></th></tr></thead>
+      <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Projeto</th><th>Método</th><th>Valor</th><th>Por</th><th>Obs.</th><th>Anexo</th><th></th></tr></thead>
       <tbody id="despBody"></tbody>
     </table></div>
     <div class="empty" id="despEmpty" style="display:none">
@@ -804,18 +812,21 @@ function addDespesa(){
   const valor=parseFloat(document.getElementById('despValor').value)||0;
   const metodo=document.getElementById('despMetodo').value;
   const obs=document.getElementById('despObs').value.trim();
+  const lancadoPor=document.getElementById('despLancadoPor').value;
   if(!desc||!valor){alert('Preencha descrição e valor.');return;}
+  if(!lancadoPor){alert('Selecione quem está lançando.');return;}
   const projetoId=document.getElementById('despProjeto').value||'';
   const _proj=projetoId?receitas.find(r=>r.id===projetoId):null;
   const _nc=_proj?(_proj.numContrato||''):'';
-  const _nd={id:genId(),data,desc,cat,valor,metodo,obs,projetoId,numContrato:_nc,fileData:_dFile,fileName:_dName};
+  const _nd={id:genId(),data,desc,cat,valor,metodo,obs,lancadoPor,projetoId,numContrato:_nc,fileData:_dFile,fileName:_dName};
   despesas.push(_nd);
   despesas.sort((a,b)=>b.data.localeCompare(a.data));
   saveData('despesas',despesas);
-  enviarSheets('save_despesa',{id:_nd.id,data,desc,cat,valor,metodo,obs,projetoId,numContrato:_nc});
+  enviarSheets('save_despesa',{id:_nd.id,data,desc,cat,valor,metodo,obs,lancadoPor,projetoId,numContrato:_nc});
   document.getElementById('despDesc').value='';
   document.getElementById('despValor').value='';
   document.getElementById('despObs').value='';
+  document.getElementById('despLancadoPor').value='';
   clearDFile();renderDespesas();
 }
 function deleteDespesa(id){if(!confirm('Excluir esta despesa?'))return;despesas=despesas.filter(d=>d.id!==id);saveData('despesas',despesas);renderDespesas();}
@@ -899,6 +910,7 @@ function renderDespesas(){
       `<td>${projLabel}</td>`+
       `<td class="mu">${d.metodo}</td>`+
       `<td style="font-weight:700;color:var(--red)">${fmtBRL(d.valor)}</td>`+
+      `<td class="mu">${d.lancadoPor||'—'}</td>`+
       `<td class="mu">${d.obs||'—'}</td>`+
       `<td>${att}</td>`+
       `<td><button class="btn btn-r btn-sm" onclick="deleteDespesa('${d.id}')">${icoTrsh}</button></td>`+
