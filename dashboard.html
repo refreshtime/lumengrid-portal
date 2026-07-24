@@ -620,7 +620,7 @@ function loadData(k,d){try{const v=localStorage.getItem('lg_'+k);return v?JSON.p
 function saveData(k,v){try{localStorage.setItem('lg_'+k,JSON.stringify(v));}catch(e){alert('Erro ao salvar: '+e.message);}if(IS_AS)google.script.run.saveData(k,JSON.stringify(v));}
 
 // ── GOOGLE SHEETS SYNC ──
-let _GS_URL=localStorage.getItem('lg_gs_url')||'';
+let _GS_URL=localStorage.getItem('lg_gs_url')||'https://script.google.com/macros/s/AKfycbyUnGzQmxNWBj_b8lokum_J0XcIW7sbXbA0slzul4b_DUibgZx-HZSas8qVXYC9wahJ/exec';
 
 function enviarSheets(acao,body){
   if(!_GS_URL)return;
